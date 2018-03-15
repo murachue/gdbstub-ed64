@@ -27,7 +27,7 @@ void dwbinvalall() {
 }
 
 void dwbinval(const void *ptr, uintptr_t len) {
-	// if len is over d-cache size, assume whole is cached, flush all i-cache.
+	// if len is over d-cache size, assume whole is cached, flush all d-cache.
 	if(8192 <= len) {
 		dwbinvalall();
 		return;
@@ -37,7 +37,7 @@ void dwbinval(const void *ptr, uintptr_t len) {
 }
 
 void dinval(const void *ptr, uintptr_t len) {
-	// if len is over d-cache size, assume whole is cached, flush all i-cache.
+	// if len is over d-cache size, assume whole is cached, flush all d-cache.
 	if(8192 <= len) {
 		dwbinvalall(); // note: there is no DIndexInvd (think it... too dangerous!!), do WBInvd instead (that is safe and intended).
 		return;
