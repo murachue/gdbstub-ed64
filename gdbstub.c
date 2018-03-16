@@ -221,8 +221,6 @@ static intptr_t int2hex(uint8_t *buf, uintptr_t bufsize, intptr_t index, uintptr
 	return index;
 }
 
-// TODO how represent when buffer overflow??
-// TODO integer overflow are there!!
 static intptr_t tohex(uint8_t *buf, uintptr_t bufsize, intptr_t index, const void *src_, uintptr_t srclen) {
 	uintptr_t i = 0;
 	stub_recovered = 0;
