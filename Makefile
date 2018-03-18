@@ -28,7 +28,7 @@ clean:
 
 $(ROM): $(BIN)
 	rm -f $@
-	$(N64TOOL) -l 1025K -t "some program" -h $(HEADERPATH) -o $@ $<
+	$(N64TOOL) -l 1028K -t "some program" -h $(HEADERPATH) -o $@ $<
 	$(CHKSUM64PATH) $@
 
 $(BIN): $(ELF)
