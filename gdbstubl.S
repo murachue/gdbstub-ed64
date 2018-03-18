@@ -4,6 +4,9 @@
 	.text
 	.set noat
 
+	# override ISA regardless of ABI... in O32 "sd" becomes "sw $reg; sw $reg+1" that is bad for gdbstub 64bit MIPS protocol.
+	.set mips3
+
 	.type stub_switch, function
 	.globl stub_switch
 stub_switch:
