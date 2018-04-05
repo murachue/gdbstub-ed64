@@ -10,18 +10,6 @@ struct {
 	uint32_t pipebusy; // pipe busy counter
 	uint32_t tmem; // tmem load counter
 } static volatile * const DP = (void*)P32(0xA4100000);
-enum DP_STATUS_WRITE {
-	DP_STATUS_CLEAR_XBUS_DMEM_DMA = 1 << 0, // rdram->dp
-	DP_STATUS_SET_XBUS_DMEM_DMA   = 1 << 1, // dmem->dp
-	DP_STATUS_CLEAR_FREEZE        = 1 << 2,
-	DP_STATUS_SET_FREEZE          = 1 << 3,
-	DP_STATUS_CLEAR_FLUSH         = 1 << 4,
-	DP_STATUS_SET_FLUSH           = 1 << 5,
-	DP_STATUS_CLEAR_TMEM_CTR      = 1 << 6,
-	DP_STATUS_CLEAR_PIPE_CTR      = 1 << 7,
-	DP_STATUS_CLEAR_CMD_CTR       = 1 << 8,
-	DP_STATUS_CLEAR_CLOCK_CTR     = 1 << 9,
-};
 enum DP_STATUS_READ {
 	DP_STATUS_XBUS_DMEM_DMA = 1 << 0,
 	DP_STATUS_FREEZE        = 1 << 1,
@@ -34,6 +22,18 @@ enum DP_STATUS_READ {
 	DP_STATUS_DMA_BUSY      = 1 << 8,
 	DP_STATUS_END_VALID     = 1 << 9,
 	DP_STATUS_START_VALID   = 1 << 10,
+};
+enum DP_STATUS_WRITE {
+	DP_STATUS_CLEAR_XBUS_DMEM_DMA = 1 << 0, // rdram->dp
+	DP_STATUS_SET_XBUS_DMEM_DMA   = 1 << 1, // dmem->dp
+	DP_STATUS_CLEAR_FREEZE        = 1 << 2,
+	DP_STATUS_SET_FREEZE          = 1 << 3,
+	DP_STATUS_CLEAR_FLUSH         = 1 << 4,
+	DP_STATUS_SET_FLUSH           = 1 << 5,
+	DP_STATUS_CLEAR_TMEM_CTR      = 1 << 6,
+	DP_STATUS_CLEAR_PIPE_CTR      = 1 << 7,
+	DP_STATUS_CLEAR_CMD_CTR       = 1 << 8,
+	DP_STATUS_CLEAR_CLOCK_CTR     = 1 << 9,
 };
 
 struct {

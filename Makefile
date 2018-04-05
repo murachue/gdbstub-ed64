@@ -7,7 +7,7 @@ CHKSUM64PATH = $(N64_INST)/bin/chksum64
 HEADERPATH = $(N64_INST)/mips64-elf/lib/header
 #ABI = -mabi=64 -msym32
 ABI = -mabi=o64
-CFLAGS = -std=gnu99 -march=vr4300 -mtune=vr4300 $(ABI) -O0 -G0 -ggdb3 -Wall -Werror
+CFLAGS = -std=gnu99 -ffunction-sections -fdata-sections -march=vr4300 -mtune=vr4300 $(ABI) -O0 -G0 -ggdb3 -Wall -Werror
 ASFLAGS =  -march=vr4300 -mtune=vr4300 -g $(ABI)
 
 STUBOBJS = gdbstub.o gdbstubl.o cache.o
@@ -35,7 +35,7 @@ $(BIN): $(ELF)
 	$(OBJCOPY) $< $@ -O binary
 
 $(ELF): $(OBJS)
-	$(CC) -Tn64ld.x -o $@ $^ $(LIBS)
+	$(CC) -Tn64ld.x -Wl,-Map,$@.map -o $@ $^ $(LIBS)
 
 gdbstubl.o: gdbstubl.S 3264.h gdbstub.h
 gdbstub.o: gdbstub.c 3264.h regs.h cache.h gdbstub.h
