@@ -111,13 +111,14 @@ static void cart2dram(void *dramptr, uint32_t cartaddr, uint32_t len) {
 }
 
 static uint32_t fifo2dram(void* buf, uintptr_t maxlen) {
-	// not dwbinval, discard to-be-write (that is not necessary data... overwritten soon.)
-	dinval(buf, maxlen);
-
 	// note: I want to fifo2cart many time and then one cart2dram,
 	//       but ED64's len=512/addr=2048(!) align does not allow it...
 	const uint32_t cartaddr = 0x04000000 - 2048;
 	uintptr_t len = 0;
+
+	// not dwbinval, discard to-be-write (that is not necessary data... overwritten soon.)
+	dinval(buf, maxlen);
+
 	while(len < maxlen) {
 		if(0 < len) {
 			ED64->cfg;
@@ -140,12 +141,13 @@ static uint32_t fifo2dram(void* buf, uintptr_t maxlen) {
 }
 
 static void install_handler(void *pfn) {
+	uint32_t i, j;
 	uint32_t stubintcode[2];
 	stubintcode[0] = 0x08000000 | (((uint32_t)(uintptr_t)pfn >> 2) & 0x03FFffff); // j *pfn
 	stubintcode[1] = 0; // branch-delay-slot: nop
 
-	for(uint32_t i = 0; i < 2; i++) {
-		for(uint32_t j = 0; j < 4; j++) {
+	for(i = 0; i < 2; i++) {
+		for(j = 0; j < 4; j++) {
 			*(uint32_t*)P32(0x80000000 + j * 0x80 + i * 4) = stubintcode[i];
 		}
 	}
@@ -164,15 +166,16 @@ static void install_recover(void) {
 }
 
 void stub_install(void) {
+	uint32_t i, j;
 	extern void stub_installtlb(void);
 	stub_installtlb();
 
-	for(uint32_t i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
+	for(i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
 		origbpcodes[i].addr = -1;
 	}
 
-	for(uint32_t i = 0; i < 2; i++) {
-		for(uint32_t j = 0; j < 4; j++) {
+	for(i = 0; i < 2; i++) {
+		for(j = 0; j < 4; j++) {
 			origintcodes[j][i] = *(uint32_t*)P32(0x80000000 + j * 0x80 + i * 4);
 		}
 	}
@@ -181,8 +184,10 @@ void stub_install(void) {
 }
 
 void stub_uninstall(void) {
-	for(uint32_t i = 0; i < 2; i++) {
-		for(uint32_t j = 0; j < 4; j++) {
+	uint32_t i, j;
+
+	for(i = 0; i < 2; i++) {
+		for(j = 0; j < 4; j++) {
 			*(uint32_t*)P32(0x80000000 + j * 0x80 + i * 4) = origintcodes[j][i];
 		}
 	}
@@ -212,8 +217,9 @@ static int32_t hex2int(uint8_t c) {
 uint32_t stub_recovered;
 
 static intptr_t int2hex(uint8_t *buf, uintptr_t bufsize, intptr_t index, uintptr_t value, uintptr_t nibbles) {
+	uintptr_t lpos;
 	static const char i2h[16] = "0123456789ABCDEF";
-	for(uintptr_t lpos = nibbles; 0 < lpos; lpos--) {
+	for(lpos = nibbles; 0 < lpos; lpos--) {
 		if(bufsize <= index) return -1; // overflow!
 		buf[index] = i2h[(value >> (4 * (lpos - 1))) & 15];
 		index++;
@@ -279,12 +285,13 @@ static void sendraw(uint8_t *buf, uintptr_t bufsize, uintptr_t len) {
 }
 
 static int sendpkt(uint8_t *buf, intptr_t bufsize) {
+	intptr_t si, ei;
+
 	if(bufsize < 4) {
 		// no minimum space is available. illegal function call!!
 		return -1;
 	}
 
-	intptr_t si;
 	for(si = 0; si < bufsize - 3; si++) {
 		if(buf[si] == '$') {
 			break;
@@ -297,7 +304,6 @@ static int sendpkt(uint8_t *buf, intptr_t bufsize) {
 	si++;
 
 	// find end marker
-	intptr_t ei;
 	for(ei = si; ei < bufsize - 2; ei++) {
 		if(buf[ei] == '#') {
 			break;
@@ -309,20 +315,29 @@ static int sendpkt(uint8_t *buf, intptr_t bufsize) {
 	}
 
 	// calculate and fill checksum
-	uintptr_t sum = 0;
-	for(uintptr_t i = si; i < ei; i++) {
-		sum += buf[i];
-	}
-	uint8_t sumb[1] = {sum};
-	if(tohex(buf, bufsize, ei + 1, sumb, 1) < 0) {
-		// should not be happened!
-		return -4;
+	{
+		uintptr_t sum = 0;
+		{
+			uintptr_t i;
+			for(i = si; i < ei; i++) {
+				sum += buf[i];
+			}
+		}
+		{
+			uint8_t sumb[1] = {sum};
+			if(tohex(buf, bufsize, ei + 1, sumb, 1) < 0) {
+				// should not be happened!
+				return -4;
+			}
+		}
 	}
 	ei += 1 + 2;
 
 	// go!!
-	uintptr_t ssize = (ei + (512 - 1)) & -512;
-	sendraw(buf, ssize, ei);
+	{
+		uintptr_t ssize = (ei + (512 - 1)) & -512;
+		sendraw(buf, ssize, ei);
+	}
 
 	return 0;
 }
@@ -342,11 +357,13 @@ static void die(uint16_t color) {
 static uint8_t cmd_getregs(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 	carttxbuf[0] = '+';
 	carttxbuf[1] = '$';
-	intptr_t ei = tohex(carttxbuf, sizeof(carttxbuf), 2, (void*)P32(REGS_START), REGS_END);
-	if(ei < 0) {
-		return STUBERR_GRTOOSHORT;
+	{
+		intptr_t ei = tohex(carttxbuf, sizeof(carttxbuf), 2, (void*)P32(REGS_START), REGS_END);
+		if(ei < 0) {
+			return STUBERR_GRTOOSHORT;
+		}
+		carttxbuf[ei] = '#';
 	}
-	carttxbuf[ei] = '#';
 	if(sendpkt(carttxbuf, sizeof(carttxbuf))) die(0x07C0);
 
 	return 0;
@@ -356,10 +373,11 @@ static uint8_t cmd_getregs(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 static uint8_t cmd_setregs(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 	uint8_t *p = (void*)P32(REGS_START);
 	uintptr_t len = (endi - starti - 1) / 2;
+	uintptr_t i;
 	if(REGS_END < len) {
 		len = REGS_END;
 	}
-	for(uintptr_t i = starti + 1; i < starti + 1 + len * 2; i++) {
+	for(i = starti + 1; i < starti + 1 + len * 2; i++) {
 		uintptr_t b = 0;
 		int32_t nib;
 		nib = hex2int(buf[i++]);
@@ -395,11 +413,13 @@ static uint8_t cmd_getmemory(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 		if(endi <= i) {
 			return STUBERR_GMADDRSHORT;
 		}
-		int32_t nib = hex2int(buf[i]);
-		if(nib < 0) {
-			return STUBERR_GMADDRINV;
+		{
+			int32_t nib = hex2int(buf[i]);
+			if(nib < 0) {
+				return STUBERR_GMADDRINV;
+			}
+			addr = (addr << 4) | nib;
 		}
-		addr = (addr << 4) | nib;
 	}
 	i++; // skip ','
 	for(; buf[i] != '#'; i++) {
@@ -438,88 +458,98 @@ static uint8_t cmd_setmemory(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 		if(endi <= i) {
 			return STUBERR_SMADDRSHORT;
 		}
-		int32_t nib = hex2int(buf[i]);
-		if(nib < 0) {
-			return STUBERR_SMADDRINV;
+		{
+			int32_t nib = hex2int(buf[i]);
+			if(nib < 0) {
+				return STUBERR_SMADDRINV;
+			}
+			addr = (addr << 4) | nib;
 		}
-		addr = (addr << 4) | nib;
 	}
 	i++; // skip ','
 	for(; buf[i] != ':'; i++) {
 		if(endi <= i) {
 			return STUBERR_SMLENSHORT;
 		}
-		int32_t nib = hex2int(buf[i]);
-		if(nib < 0) {
-			return STUBERR_SMLENINV;
+		{
+			int32_t nib = hex2int(buf[i]);
+			if(nib < 0) {
+				return STUBERR_SMLENINV;
+			}
+			len = (len << 4) | nib;
 		}
-		len = (len << 4) | nib;
 	}
 	i++; // skip ':'
 
-	// remember addr,len at entry for flushing cache
-	const uintptr_t start_addr = addr, tobe_len = len;
+	{
+		// remember addr,len at entry for flushing cache
+		const uintptr_t start_addr = addr, tobe_len = len;
 
-	uintptr_t width;
-	if(((addr & 3) == 0) && ((len & 3) == 0)) {
-		width = 4;
-	} else if(((addr & 1) == 0) && ((len & 1) == 0)) {
-		width = 2;
-	} else {
-		width = 1;
+		uintptr_t width;
+		uint32_t by, phase;
+
+		if(((addr & 3) == 0) && ((len & 3) == 0)) {
+			width = 4;
+		} else if(((addr & 1) == 0) && ((len & 1) == 0)) {
+			width = 2;
+		} else {
+			width = 1;
+		}
+
+		stub_recovered = 0;
+		for(by = 0, phase = 0; len; i++) {
+			int32_t nib;
+			if(buf[i] == '#') {
+				break;
+			}
+
+			nib = hex2int(buf[i]);
+			if(nib < 0) {
+				return STUBERR_SMBYTESINV;
+			}
+			by = (by << 4) | nib;
+			switch(width) {
+			case 1:
+				phase = (phase + 1) % 2;
+				if(phase == 0) {
+					*(uint8_t*)addr = by;
+				}
+				break;
+			case 2:
+				phase = (phase + 1) % 4;
+				if(phase == 0) {
+					*(uint16_t*)addr = by;
+				}
+				break;
+			case 4:
+				phase = (phase + 1) % 8;
+				if(phase == 0) {
+					*(uint32_t*)addr = by;
+				}
+				break;
+			}
+			if(phase == 0) {
+				if(stub_recovered) {
+					return STUBERR_SMSEGV;
+				}
+				addr += width;
+				len -= width;
+			}
+		}
+
+		// to recognize new insn, ex. "break"
+		dwbinval((void*)start_addr, tobe_len);
+		iinval((void*)start_addr, tobe_len);
+
+		carttxbuf[0] = '+';
+		carttxbuf[1] = '$';
+		carttxbuf[2] = 'O';
+		carttxbuf[3] = 'K';
+		carttxbuf[4] = '#';
+		if(sendpkt(carttxbuf, sizeof(carttxbuf))) die(0x07C0);
+
+		return 0;
 	}
-
-	stub_recovered = 0;
-	for(uint32_t by = 0, phase = 0; len; i++) {
-		if(buf[i] == '#') {
-			break;
-		}
-		int32_t nib = hex2int(buf[i]);
-		if(nib < 0) {
-			return STUBERR_SMBYTESINV;
-		}
-		by = (by << 4) | nib;
-		switch(width) {
-		case 1:
-			phase = (phase + 1) % 2;
-			if(phase == 0) {
-				*(uint8_t*)addr = by;
-			}
-			break;
-		case 2:
-			phase = (phase + 1) % 4;
-			if(phase == 0) {
-				*(uint16_t*)addr = by;
-			}
-			break;
-		case 4:
-			phase = (phase + 1) % 8;
-			if(phase == 0) {
-				*(uint32_t*)addr = by;
-			}
-			break;
-		}
-		if(phase == 0) {
-			if(stub_recovered) {
-				return STUBERR_SMSEGV;
-			}
-			addr += width;
-			len -= width;
-		}
-	}
-
-	// to recognize new insn, ex. "break"
-	dwbinval((void*)start_addr, tobe_len);
-	iinval((void*)start_addr, tobe_len);
-
-	carttxbuf[0] = '+';
-	carttxbuf[1] = '$';
-	carttxbuf[2] = 'O';
-	carttxbuf[3] = 'K';
-	carttxbuf[4] = '#';
-	if(sendpkt(carttxbuf, sizeof(carttxbuf))) die(0x07C0);
-
-	return 0;
 }
 
 static void bpset(uint32_t index, uintptr_t addr, uint32_t value) {
@@ -534,15 +564,19 @@ static void bpset(uint32_t index, uintptr_t addr, uint32_t value) {
 // s -> (stop_reply)
 // ref: Linux 2.6.25:arch/mips/kernel/gdb-stub.c
 static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
+	intptr_t pc;
+	uint32_t insn;
+	intptr_t tnext, fnext;
+
 	stub_recovered = 0;
-	intptr_t pc = *(int64_t*)(P32(REGS_START) + REGS_PC);
-	uint32_t insn = *(uint32_t*)pc;
+	pc = *(int64_t*)(P32(REGS_START) + REGS_PC);
+	insn = *(uint32_t*)pc;
 	if(stub_recovered) {
 		return STUBERR_STPCSEGV;
 	}
 
-	intptr_t tnext = pc + 4;
-	intptr_t fnext = -1;
+	tnext = pc + 4;
+	fnext = -1;
 
 	if((insn & 0xF8000000) == 0x08000000) { // J/JAL
 		tnext = (tnext & 0xFFFFffffF0000000) | ((insn & 0x03FFffff) << 2);
@@ -578,10 +612,12 @@ static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 
 // interrupt entry
 void stub_entry(void) {
+	uint32_t i;
+
 	install_recover();
 
 	// bprestore
-	for(uint32_t i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
+	for(i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
 		if(origbpcodes[i].addr != -1) {
 			uint32_t *addr = (uint32_t*)origbpcodes[i].addr;
 
@@ -607,6 +643,9 @@ void stub_entry(void) {
 	}
 
 	for(;;) {
+		uintptr_t len;
+		uintptr_t i;
+
 		//ed_enableregs(1);
 
 		// wait for arriving data
@@ -617,11 +656,15 @@ void stub_entry(void) {
 			}
 		}
 
-		uintptr_t len = fifo2dram(cartrxbuf, sizeof(cartrxbuf));
+		len = fifo2dram(cartrxbuf, sizeof(cartrxbuf));
 
 		//ed_enableregs(0);
 
-		for(uintptr_t i = 0; i < len; i++) {
+		for(i = 0; i < len; i++) {
+			uintptr_t starti, endi;
+			uint32_t realsum;
+			uint8_t error;
+
 			if(cartrxbuf[i] != '$') {
 				// not start of GDB remote packet
 				// TODO ignoreing '+' is ok, but '-' is not!!
@@ -631,9 +674,9 @@ void stub_entry(void) {
 			// found packet head
 			i++; if(len <= i) goto pkterr;
 
-			uintptr_t starti = i;
+			starti = i;
 
-			uint32_t realsum = 0;
+			realsum = 0;
 			for(;;) {
 				if(cartrxbuf[i] == '#') {
 					break;
@@ -642,25 +685,27 @@ void stub_entry(void) {
 				i++; if(len <= i) goto pkterr;
 			}
 
-			uintptr_t endi = i;
+			endi = i;
 
 			// skip '#'
 			i++; if(len <= i) goto pkterr;
-			// read expect cksum
-			int32_t expectsum;
-			expectsum = hex2int(cartrxbuf[i]) << 4;
-			i++; if(len <= i) goto pkterr;
-			expectsum |= hex2int(cartrxbuf[i]);
+			{
+				int32_t expectsum;
+				// read expect cksum
+				expectsum = hex2int(cartrxbuf[i]) << 4;
+				i++; if(len <= i) goto pkterr;
+				expectsum |= hex2int(cartrxbuf[i]);
 
-			// error if checksum mismatch (inclding malformed expect cksum)
-			if((realsum & 0xFF) != expectsum) {
-				goto pkterr;
+				// error if checksum mismatch (inclding malformed expect cksum)
+				if((realsum & 0xFF) != expectsum) {
+					goto pkterr;
+				}
 			}
 
 			// here, we can assume whole command fits in rxbuf.
 
 			// process command
-			uint8_t error = 0;
+			error = 0;
 			switch(cartrxbuf[starti]) {
 			case 'g': // register target2host
 				error = cmd_getregs(cartrxbuf, starti, endi);

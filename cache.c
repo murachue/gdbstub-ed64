@@ -9,16 +9,15 @@
 
 #define do_cache(op, cache, _linesize, _start, _len) \
 	do { \
-		if((_len) == 0) { \
-			break; \
-		} \
-		const uintptr_t xlinesize = (_linesize); \
-		const uintptr_t xstart = (uintptr_t)(_start); \
-		const uintptr_t xlen = (_len); \
-		const uintptr_t xend = (xstart + (xlen - 1)) | (xlinesize - 1); \
-		\
-		for(uintptr_t xline = xstart; xline <= xend; xline += xlinesize) { /* TODO specifying end of virtual memory cause inf-loop!! */ \
-			__asm("cache %0, %1" : : "i"(((op)<<2)|(cache)), "m"(*(uint8_t*)xline)); \
+		if((_len) != 0) { \
+			const uintptr_t xlinesize = (_linesize); \
+			const uintptr_t xstart = (uintptr_t)(_start); \
+			const uintptr_t xlen = (_len); \
+			const uintptr_t xend = (xstart + (xlen - 1)) | (xlinesize - 1); \
+			uintptr_t xline; \
+			for(xline = xstart; xline <= xend; xline += xlinesize) { /* TODO specifying end of virtual memory cause inf-loop!! */ \
+				__asm("cache %0, %1" : : "i"(((op)<<2)|(cache)), "m"(*(uint8_t*)xline)); \
+			} \
 		} \
 	} while(0)
 
