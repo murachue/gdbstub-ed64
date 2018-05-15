@@ -252,8 +252,11 @@ stub_installtlb:
 	LA_P32($t1, 0xFFFFE000)
 	MATC0($t1, $10) # EntryHi
 	MATC0($zero, $2) # EntryLo0
-	# note: you may modify "003FF000" to relocate stub reg buffer...
-	LI_U32($t1, (((0x003FF000 >> 12) << 6) | 0x1F)) # CachableNoncoherent(011), Dirty, Valid, Global
+	LA_P32($t1, gdbstubctx)
+	andi $t1, 0x1FFFffff # virt2phys
+	srl $t1, 12 # byte2pfn
+	sll $t1, 6 # PFN[16:0] -> EntryLo.PFN(29:6)
+	ori $t1, 0x1F # CachableNoncoherent(011), Dirty, Valid, Global
 	MATC0($t1, $3) # EntryLo1
 	MATC0($zero, $5) # PageMask; 4KiB
 	nop
@@ -263,3 +266,9 @@ stub_installtlb:
 	nop
 
 	jr $ra
+
+	.bss
+	.balign 4096
+	.type gdbstubctx, @object
+gdbstubctx:
+	.space 4096
