@@ -164,7 +164,7 @@ static void install_recover(void) {
 }
 
 void stub_install(void) {
-	extern void stub_installtlb();
+	extern void stub_installtlb(void);
 	stub_installtlb();
 
 	for(uint32_t i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
@@ -194,7 +194,7 @@ void stub_uninstall(void) {
 // sample program entry
 void stub(void) {
 	// make TLB initialized; TODO detect TLB initialized and skip... possible??
-	extern void stub_tlbunmapall();
+	extern void stub_tlbunmapall(void);
 	stub_tlbunmapall();
 
 	stub_install();
