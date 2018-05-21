@@ -6,8 +6,10 @@
 	.set noat
 	.set hardfloat
 
-	# override ISA regardless of ABI... in O32 "sd" becomes "sw $reg; sw $reg+1" that is bad for gdbstub 64bit MIPS protocol.
+	# override ISA/GPsize(/FPsize) regardless of ABI... in O32 "sd" becomes "sw $reg; sw $reg+1" that is bad for gdbstub 64bit MIPS protocol.
 	.set mips3
+	.set gp=64
+	.set fp=64
 
 	.type stub_switch, function
 	.globl stub_switch
