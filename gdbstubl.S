@@ -2,7 +2,9 @@
 #include "gdbstub.h"
 
 	.text
+	.set push
 	.set noat
+	.set hardfloat
 
 	# override ISA regardless of ABI... in O32 "sd" becomes "sw $reg; sw $reg+1" that is bad for gdbstub 64bit MIPS protocol.
 	.set mips3
@@ -71,8 +73,6 @@ stub_switch:
 	sd $12, (REGS_START + REGS_PC)($zero)
 
 	# CP1 FGRs
-	.set push
-	.set hardfloat
 	sdc1  $0, (REGS_START + REGS_FGR +  0*8)($zero)
 	sdc1  $1, (REGS_START + REGS_FGR +  1*8)($zero)
 	sdc1  $2, (REGS_START + REGS_FGR +  2*8)($zero)
@@ -105,7 +105,6 @@ stub_switch:
 	sdc1 $29, (REGS_START + REGS_FGR + 29*8)($zero)
 	sdc1 $30, (REGS_START + REGS_FGR + 30*8)($zero)
 	sdc1 $31, (REGS_START + REGS_FGR + 31*8)($zero)
-	.set pop
 
 	# CP1 controls
 	cfc1 $12, $31 # fpcs
@@ -122,8 +121,6 @@ stub_switch:
 	ctc1 $12, $0 # fpir... writable??
 
 	# CP1 FGRs
-	.set push
-	.set hardfloat
 	ldc1  $0, (REGS_START + REGS_FGR +  0*8)($zero)
 	ldc1  $1, (REGS_START + REGS_FGR +  1*8)($zero)
 	ldc1  $2, (REGS_START + REGS_FGR +  2*8)($zero)
@@ -156,7 +153,6 @@ stub_switch:
 	ldc1 $29, (REGS_START + REGS_FGR + 29*8)($zero)
 	ldc1 $30, (REGS_START + REGS_FGR + 30*8)($zero)
 	ldc1 $31, (REGS_START + REGS_FGR + 31*8)($zero)
-	.set pop
 
 	# CP0s
 	ld $12, (REGS_START + REGS_SR)($zero) # 32bit as 64bit
@@ -209,6 +205,8 @@ stub_switch:
 
 	eret
 
+	.set pop
+
 	.type stub_recover, function
 	.globl stub_recover
 stub_recover:
@@ -253,7 +251,7 @@ stub_installtlb:
 	MATC0($t1, $10) # EntryHi
 	MATC0($zero, $2) # EntryLo0
 	LA_P32($t1, gdbstubctx)
-	andi $t1, 0x1FFFffff # virt2phys
+	and $t1, 0x1FFFffff # virt2phys
 	srl $t1, 12 # byte2pfn
 	sll $t1, 6 # PFN[16:0] -> EntryLo.PFN(29:6)
 	ori $t1, 0x1F # CachableNoncoherent(011), Dirty, Valid, Global
