@@ -49,8 +49,7 @@ stub_switch:
 	sd $31, (REGS_START + REGS_GPR + 31*8)($zero)
 
 	# set sp to safe value
-	# note: you may modify "803FF000" to relocate stub reg buffer...
-	LA_P32($29, 0x803FFFF0 + REGS_START)
+	LA_P32($29, 0xFFFFFFF0 + REGS_START)
 
 	# CP0s
 	mfc0 $12, $12 # status
