@@ -66,8 +66,8 @@ struct {
 struct {
 	uint32_t dramaddr;
 	uint32_t cartaddr;
-	uint32_t dram2cart; /* read (to SI) */
-	uint32_t cart2dram; /* write (from SI) */
+	uint32_t dram2cart; // read (to PI)
+	uint32_t cart2dram; // write (from PI)
 	uint32_t status;
 	uint32_t dom1lat; /* latency */
 	uint32_t dom1pwd; /* pulse width */
