@@ -5,10 +5,10 @@ struct {
 	uint32_t end;
 	uint32_t current;
 	uint32_t status;
-	uint32_t clock; // clock counter
-	uint32_t bufbusy; // buffer busy counter
-	uint32_t pipebusy; // pipe busy counter
-	uint32_t tmem; // tmem load counter
+	uint32_t clock; /* clock counter */
+	uint32_t bufbusy; /* buffer busy counter */
+	uint32_t pipebusy; /* pipe busy counter */
+	uint32_t tmem; /* tmem load counter */
 } static volatile * const DP = (void*)P32(0xA4100000);
 enum DP_STATUS_READ {
 	DP_STATUS_XBUS_DMEM_DMA = 1 << 0,
@@ -24,8 +24,8 @@ enum DP_STATUS_READ {
 	DP_STATUS_START_VALID   = 1 << 10,
 };
 enum DP_STATUS_WRITE {
-	DP_STATUS_CLEAR_XBUS_DMEM_DMA = 1 << 0, // rdram->dp
-	DP_STATUS_SET_XBUS_DMEM_DMA   = 1 << 1, // dmem->dp
+	DP_STATUS_CLEAR_XBUS_DMEM_DMA = 1 << 0, /* rdram->dp */
+	DP_STATUS_SET_XBUS_DMEM_DMA   = 1 << 1, /* dmem->dp */
 	DP_STATUS_CLEAR_FREEZE        = 1 << 2,
 	DP_STATUS_SET_FREEZE          = 1 << 3,
 	DP_STATUS_CLEAR_FLUSH         = 1 << 4,
@@ -66,17 +66,17 @@ struct {
 struct {
 	uint32_t dramaddr;
 	uint32_t cartaddr;
-	uint32_t dram2cart; // read (to SI)
-	uint32_t cart2dram; // write (from SI)
+	uint32_t dram2cart; /* read (to SI) */
+	uint32_t cart2dram; /* write (from SI) */
 	uint32_t status;
-	uint32_t dom1lat; // latency
-	uint32_t dom1pwd; // pulse width
-	uint32_t dom1pgs; // page size
-	uint32_t dom1rls; // release
-	uint32_t dom2lat; // latency
-	uint32_t dom2pwd; // pulse width
-	uint32_t dom2pgs; // page size
-	uint32_t dom2rls; // release
+	uint32_t dom1lat; /* latency */
+	uint32_t dom1pwd; /* pulse width */
+	uint32_t dom1pgs; /* page size */
+	uint32_t dom1rls; /* release */
+	uint32_t dom2lat; /* latency */
+	uint32_t dom2pwd; /* pulse width */
+	uint32_t dom2pgs; /* page size */
+	uint32_t dom2rls; /* release */
 } static volatile * const __attribute((unused)) PI = (void*)P32(0xA4600000);
 enum PI_STATUS_READ {
 	PI_STATUS_DMABUSY = 1 << 0,
