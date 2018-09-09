@@ -4,8 +4,6 @@ A GDBstub for Nintendo 64 + EverDrive-64.
 
 Note: Although gdbstub does not depends any libraries (maybe), sample program requires [libdragon](https://github.com/DragonMinded/libdragon)
 
-Note: You need to tweak stack pointer to lower-address by modifying libdragon's src/entrypoint.S... `li t1, 0x7FFFFFF0` -> `li t1, 0x7FFFE000` ...good luck!!
-
 ```
 $ export N64_INST=/path/to/toolchain
 $ make
@@ -94,15 +92,13 @@ extern void stub(void); stub();
 
 And link with `gdbstub.o`, `gdbstubl.o` and `cache.o`.
 
-Tested with O64 and N64(without libdragon) ABI. Other ABIs are untested...
+Tested with O64 and O32 ABI. Other ABIs are untested...
 
 It will initialize TLB and install starting stub code to vectors (80000000, 80000080, 80000100(meaningless :-), 80000180) then invoke stub with a dummy `syscall`.
 
 # TODO
 
 * accept longer packet? (com64.rb/gdbstub.c)
-* allocate working memory on anywhere (currently 4MiB-4KiB only... relocate requires modifying some immediate values)
-  * at least, should use memory size stored at 80000318...
 * TLB co-operate support (gdbstubl.S)
   * currently it assuming that stub is a ONLY user of TLB... or TLB-shutdown will happen in worst case
   * should tlbp before tlbwr, and use tlbwi if found
