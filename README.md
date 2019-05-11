@@ -72,6 +72,15 @@ Also, check `__data_end`, `__bss_start` and `__bss_end` is aligned at 4-bytes bo
 
 I hope this helps you.
 
+## Stub refuses some commands
+
+Stub refuses long (>512B) packet commands, ex. `G` (set registers) issued by `set $pc=$pc+8` ?
+
+It may be your FTDI USB driver is too slow to send bytes.
+(fifo2dram thinks "no more data" after reads first 512 bytes because so slow.)
+
+If you are using Linux, tweak ftdi_sio driver's bulk_(in|out)_size larger (ex. 4096).
+
 ## Stub breaks at non-problem instruction
 
 See `cause` and last 8 bit is 0x00? That's interrupt!
