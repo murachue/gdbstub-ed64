@@ -1,8 +1,128 @@
 #include <stdint.h>
-#include "3264.h"
-#include "regs.h"
-#include "cache.h"
 #include "gdbstub.h"
+
+/* cache */
+
+/*
+ * note: N64 specs:
+ *   I-Cache: 32bytes/line, 16KiB
+ *   D-Cache: 16bytes/line, 8KiB
+ */
+
+#define do_cache(op, cache, _linesize, _start, _len) \
+	do { \
+		if((_len) != 0) { \
+			const uintptr_t xlinesize = (_linesize); \
+			const uintptr_t xstart = (uintptr_t)(_start); \
+			const uintptr_t xlen = (_len); \
+			const uintptr_t xend = (xstart + (xlen - 1)) | (xlinesize - 1); \
+			uintptr_t xline; \
+			for(xline = xstart; xline <= xend; xline += xlinesize) { /* TODO specifying end of virtual memory cause inf-loop!! */ \
+				__asm("cache %0, %1" : : "i"(((op)<<2)|(cache)), "m"(*(uint8_t*)xline)); \
+			} \
+		} \
+	} while(0)
+
+void dwbinvalall() {
+	do_cache(0, 1, 16, (intptr_t)(int32_t)0x80000000, 8 * 1024); /* 0=IndexWBInvd */
+}
+
+void dwbinval(const void *ptr, uintptr_t len) {
+	/* if len is over d-cache size, assume whole is cached, flush all d-cache. */
+	if(8192 <= len) {
+		dwbinvalall();
+		return;
+	}
+
+	do_cache(5, 1, 16, ptr, len); /* 5=HitWBInvd */
+}
+
+void dinval(const void *ptr, uintptr_t len) {
+	/* if len is over d-cache size, assume whole is cached, flush all d-cache. */
+	if(8192 <= len) {
+		dwbinvalall(); /* note: there is no DIndexInvd (think it... too dangerous!!), do WBInvd instead (that is safe and intended). */
+		return;
+	}
+
+	do_cache(4, 1, 16, ptr, len); /* 4=HitInvd */
+}
+
+void iinvalall() {
+	do_cache(0, 0, 32, (intptr_t)(int32_t)0x80000000, 16 * 1024); /* 0=Index(WB)Invd */
+}
+
+void iinval(const void *ptr, uintptr_t len) {
+	/* if len is over i-cache size, assume whole is cached, flush all i-cache. */
+	if(16384 <= len) {
+		iinvalall();
+		return;
+	}
+
+	do_cache(4, 0, 32, ptr, len); /* 4=HitInvd */
+}
+
+/* N64/ED64v3 hardware regs that only used by this gdbstub */
+
+struct {
+	uint32_t dramaddr;
+	uint32_t cartaddr;
+	uint32_t dram2cart; /* read (to PI) */
+	uint32_t cart2dram; /* write (from PI) */
+	uint32_t status;
+	uint32_t dom1lat; /* latency */
+	uint32_t dom1pwd; /* pulse width */
+	uint32_t dom1pgs; /* page size */
+	uint32_t dom1rls; /* release */
+	uint32_t dom2lat; /* latency */
+	uint32_t dom2pwd; /* pulse width */
+	uint32_t dom2pgs; /* page size */
+	uint32_t dom2rls; /* release */
+} static volatile * const __attribute((unused)) PI = (void*)P32(0xA4600000);
+enum PI_STATUS_READ {
+	PI_STATUS_DMABUSY = 1 << 0,
+	PI_STATUS_IOBUSY  = 1 << 1,
+	PI_STATUS_ERROR   = 1 << 2,
+};
+enum PI_STATUS_WRITE {
+	PI_STATUS_RESET     = 1 << 0,
+	PI_STATUS_CLEARINTR = 1 << 1,
+};
+
+struct {
+	uint32_t cfg;
+	uint32_t status;
+	uint32_t dmalen;
+	uint32_t dmaaddr;
+	uint32_t msg;
+	uint32_t dmacfg;
+	uint32_t spi;
+	uint32_t spicfg;
+	uint32_t key;
+	uint32_t savcfg;
+	uint32_t sec;
+	uint32_t ver;
+} static volatile * const ED64 = (void*)P32(0xA8040000);
+enum ED64_CFG {
+	ED64_CFG_SDRAM_ON     = 1 << 0,
+	ED64_CFG_SWAP         = 1 << 1,
+	ED64_CFG_WR_MOD       = 1 << 2,
+	ED64_CFG_WR_ADDR_MASK = 1 << 3,
+};
+enum ED64_STATUS {
+	ED64_STATUS_DMABUSY    = 1 << 0,
+	ED64_STATUS_DMATIMEOUT = 1 << 1,
+	ED64_STATUS_TXE        = 1 << 2,
+	ED64_STATUS_RXF        = 1 << 3,
+	ED64_STATUS_SPI        = 1 << 4,
+};
+enum ED64_DMACFG {
+	ED64_DMACFG_SD_TO_RAM   = 1,
+	ED64_DMACFG_RAM_TO_SD   = 2,
+	ED64_DMACFG_FIFO_TO_RAM = 3,
+	ED64_DMACFG_RAM_TO_FIFO = 4,
+};
+
+/* gdbstub */
 
 enum {
 	STUBERR_UNKNOWN = 1,
@@ -40,12 +160,6 @@ static struct {
 static void ed_enableregs(int en) {
 	ED64->cfg;
 	ED64->key = en ? 0x1234 : 0; /* Enable/Disable ED64 regs */
-}
-
-static void __attribute((unused)) ed_sdram(int sdram) {
-	ED64->cfg;
-	ED64->cfg = sdram ? ED64_CFG_SDRAM_ON : 0; /* config: sdram <sdram>, swap off, wr_mod off, wr_addr_mask off. */
-	ED64->cfg;
 }
 
 static uint32_t ed_waitdma(void) {

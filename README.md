@@ -99,7 +99,7 @@ Just implant the following code where you want to break:
 extern void stub(void); stub();
 ```
 
-And link with `gdbstub.o`, `gdbstubl.o` and `cache.o`.
+And link with `gdbstub.o` and `gdbstubl.o`.
 
 Tested with O64 and O32 ABI. Other ABIs are untested...
 

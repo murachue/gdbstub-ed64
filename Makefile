@@ -10,7 +10,7 @@ ABI = -mabi=o64
 CFLAGS = -std=c90 -ffunction-sections -fdata-sections -march=vr4300 -mtune=vr4300 $(ABI) -O0 -G0 -ggdb3 -Wall -Werror
 ASFLAGS =  -march=vr4300 -mtune=vr4300 -g $(ABI)
 
-STUBOBJS = gdbstub.o gdbstubl.o cache.o
+STUBOBJS = gdbstub.o gdbstubl.o
 
 BASENAME = sample
 ROM = $(BASENAME).z64
@@ -37,6 +37,5 @@ $(BIN): $(ELF)
 $(ELF): $(OBJS)
 	$(CC) -Tn64ld.x -Wl,-Map,$@.map -o $@ $^ $(LIBS)
 
-gdbstubl.o: gdbstubl.S 3264.h gdbstub.h
-gdbstub.o: gdbstub.c 3264.h regs.h cache.h gdbstub.h
-cache.o: cache.c cache.h
+gdbstubl.o: gdbstubl.S gdbstub.h
+gdbstub.o: gdbstub.c gdbstub.h
