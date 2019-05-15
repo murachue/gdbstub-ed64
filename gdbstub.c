@@ -147,7 +147,8 @@ enum {
 };
 
 /* 0~ GPR0-31(yes, include zero),[32]PS(status),LO,HI,BadVAddr,Cause,PC,[38]FPR0-31,[70]fpcs,fpir,[72]..(dsp?),[90]end */
-/*static const uint64_t *regs = (void*)((32+6+32+2) * -8);*/
+extern uint8_t gdbstubctx[];
+static const uint64_t *regs = (uint64_t *)(gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE);
 
 static uint8_t __attribute((aligned(8))) cartrxbuf[2048];
 static uint8_t __attribute((aligned(8))) carttxbuf[2048];
@@ -472,7 +473,7 @@ static uint8_t cmd_getregs(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 	carttxbuf[0] = '+';
 	carttxbuf[1] = '$';
 	{
-		intptr_t ei = tohex(carttxbuf, sizeof(carttxbuf), 2, (void*)P32(REGS_START), REGS_END);
+		intptr_t ei = tohex(carttxbuf, sizeof(carttxbuf), 2, regs, REGS_SIZE);
 		if(ei < 0) {
 			return STUBERR_GRTOOSHORT;
 		}
@@ -485,11 +486,11 @@ static uint8_t cmd_getregs(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 
 /* G<regbytes> -> OK|Exx */
 static uint8_t cmd_setregs(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
-	uint8_t *p = (void*)P32(REGS_START);
+	uint8_t *p = (void*)regs;
 	uintptr_t len = (endi - starti - 1) / 2;
 	uintptr_t i;
-	if(REGS_END < len) {
-		len = REGS_END;
+	if(REGS_SIZE < len) {
+		len = REGS_SIZE;
 	}
 	for(i = starti + 1; i < starti + 1 + len * 2; i++) {
 		uintptr_t b = 0;
@@ -683,7 +684,7 @@ static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 	intptr_t tnext, fnext;
 
 	stub_recovered = 0;
-	pc = *(int64_t*)(P32(REGS_START) + REGS_PC);
+	pc = regs[REGS_PC / 8];
 	insn = *(uint32_t*)pc;
 	if(stub_recovered) {
 		return STUBERR_STPCSEGV;
@@ -704,7 +705,7 @@ static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 		tnext = tnext + ((intptr_t)(int16_t)insn << 2);
 	} else if((insn & 0xFC00003E) == 0x00000008) { /* JR/JALR */
 		uint32_t reg = (insn >> 21) & 0x1F;
-		tnext = *(int64_t*)(P32(REGS_START) + REGS_GPR + (reg * 8));
+		tnext = regs[REGS_GPR / 8 + reg];
 		if(stub_recovered) {
 			return STUBERR_STJRSEGV;
 		}
