@@ -152,7 +152,7 @@ static const uint64_t *regs = (uint64_t *)(gdbstubctx + GDBSTUBCTX_SIZE - REGS_S
 
 static uint8_t __attribute((aligned(8))) cartrxbuf[2048];
 static uint8_t __attribute((aligned(8))) carttxbuf[2048];
-static uint32_t origintcodes[4][2];
+static uint32_t originstcodes[4][2], origrcvrcodes[4][2];
 static struct {
 	intptr_t addr; /* -1 = unset */
 	uint32_t value;
@@ -271,17 +271,33 @@ static void install_handler(void *pfn) {
 	iinval((void*)P32(0x80000000), 0x200);
 }
 
-static void install_switch(void) {
-	extern void stub_switch(void);
-	install_handler(stub_switch);
+static void backup_and_install_handlers(uint32_t origcodes[4][2], void *pfn) {
+	uint32_t i, j;
+
+	for(i = 0; i < 4; i++) {
+		for(j = 0; j < 2; j++) {
+			origcodes[i][j] = *(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4);
+		}
+	}
+
+	install_handler(pfn);
 }
-static void install_recover(void) {
-	extern void stub_recover(void);
-	install_handler(stub_recover);
+
+static void restore_handlers(uint32_t origcodes[4][2]) {
+	uint32_t i, j;
+
+	for(i = 0; i < 4; i++) {
+		for(j = 0; j < 2; j++) {
+			*(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4) = origcodes[i][j];
+		}
+	}
+
+	dwbinval((void*)P32(0x80000000), 0x200);
+	iinval((void*)P32(0x80000000), 0x200);
 }
 
 void stub_install(void) {
-	uint32_t i, j;
+	uint32_t i;
 	extern void stub_installtlb(void);
 	stub_installtlb();
 
@@ -289,26 +305,12 @@ void stub_install(void) {
 		origbpcodes[i].addr = -1;
 	}
 
-	for(i = 0; i < 4; i++) {
-		for(j = 0; j < 2; j++) {
-			origintcodes[i][j] = *(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4);
-		}
-	}
-
-	install_switch();
+	extern void stub_switch(void);
+	backup_and_install_handlers(originstcodes, stub_switch);
 }
 
 void stub_uninstall(void) {
-	uint32_t i, j;
-
-	for(i = 0; i < 4; i++) {
-		for(j = 0; j < 2; j++) {
-			*(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4) = origintcodes[i][j];
-		}
-	}
-
-	dwbinval((void*)P32(0x80000000), 0x200);
-	iinval((void*)P32(0x80000000), 0x200);
+	restore_handlers(originstcodes);
 }
 
 /* sample program entry */
@@ -729,7 +731,8 @@ static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 void stub_entry(void) {
 	uint32_t i;
 
-	install_recover();
+	extern void stub_recover(void);
+	backup_and_install_handlers(origrcvrcodes, stub_recover);
 
 	/* bprestore */
 	for(i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
@@ -901,5 +904,5 @@ pkterr:
 bye:
 	ed_enableregs(0);
 
-	install_switch();
+	restore_handlers(origrcvrcodes);
 }
