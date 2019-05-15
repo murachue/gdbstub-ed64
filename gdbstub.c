@@ -261,9 +261,9 @@ static void install_handler(void *pfn) {
 	stubintcode[0] = 0x08000000 | (((uint32_t)(uintptr_t)pfn >> 2) & 0x03FFffff); /* j *pfn */
 	stubintcode[1] = 0; /* branch-delay-slot: nop */
 
-	for(i = 0; i < 2; i++) {
-		for(j = 0; j < 4; j++) {
-			*(uint32_t*)P32(0x80000000 + j * 0x80 + i * 4) = stubintcode[i];
+	for(i = 0; i < 4; i++) {
+		for(j = 0; j < 2; j++) {
+			*(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4) = stubintcode[j];
 		}
 	}
 
@@ -289,9 +289,9 @@ void stub_install(void) {
 		origbpcodes[i].addr = -1;
 	}
 
-	for(i = 0; i < 2; i++) {
-		for(j = 0; j < 4; j++) {
-			origintcodes[j][i] = *(uint32_t*)P32(0x80000000 + j * 0x80 + i * 4);
+	for(i = 0; i < 4; i++) {
+		for(j = 0; j < 2; j++) {
+			origintcodes[i][j] = *(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4);
 		}
 	}
 
@@ -301,9 +301,9 @@ void stub_install(void) {
 void stub_uninstall(void) {
 	uint32_t i, j;
 
-	for(i = 0; i < 2; i++) {
-		for(j = 0; j < 4; j++) {
-			*(uint32_t*)P32(0x80000000 + j * 0x80 + i * 4) = origintcodes[j][i];
+	for(i = 0; i < 4; i++) {
+		for(j = 0; j < 2; j++) {
+			*(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4) = origintcodes[i][j];
 		}
 	}
 
