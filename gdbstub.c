@@ -148,7 +148,7 @@ enum {
 
 /* 0~ GPR0-31(yes, include zero),[32]PS(status),LO,HI,BadVAddr,Cause,PC,[38]FPR0-31,[70]fpcs,fpir,[72]..(dsp?),[90]end */
 extern uint8_t gdbstubctx[];
-static uint64_t *regs = (uint64_t *)(gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE);
+static uint64_t * const regs = (uint64_t *)(gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE);
 
 /* TODO: if supporting binary-patch install, move these into gdbstubctx makes life easier. really do that?? */
 static uint8_t __attribute((aligned(8))) cartrxbuf[2048];
@@ -336,8 +336,8 @@ void stub_test(void) {
 	stub_tlbunmapall();
 
 	stub_install();
-	__asm("syscall"); /* invoke stub by triggering (safe&unique) exception */
-	stub_uninstall();
+	extern void stub(void); stub();
+	/*stub_uninstall();*/
 }
 
 static int32_t hex2int(uint8_t c) {
