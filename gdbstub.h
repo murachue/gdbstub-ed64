@@ -1,7 +1,7 @@
 /* cpp defines for both C and asm */
 
 /* you must define one of following. */
-/* #define CONFIG_GDBSTUB_CTX_ZERO */ /* requires a (virtually wired) TLB entry */
+#define CONFIG_GDBSTUB_CTX_ZERO /* requires a (virtually wired) TLB entry */
 /* #define CONFIG_GDBSTUB_CTX_GP */ /* requires 8 bytes in sbss */
 /* #define CONFIG_GDBSTUB_CTX_K0 */ /* requires clobbering $k0 */
 

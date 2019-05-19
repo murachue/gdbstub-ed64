@@ -2,7 +2,7 @@ A GDBstub for Nintendo 64 + EverDrive-64.
 
 # Build (with sample)
 
-Note: Although gdbstub does not depends any libraries (maybe), sample program requires [libdragon](https://github.com/DragonMinded/libdragon)
+Note: Although gdbstub does not depends any libraries, sample program requires [libdragon](https://github.com/DragonMinded/libdragon)
 
 ```
 $ export N64_INST=/path/to/toolchain
@@ -19,7 +19,7 @@ On some terminal:
 $ ruby ./loader64.rb /dev/ttyUSB0 sample.z64 && ruby ./com64.rb /dev/ttyUSB0 23946
 ```
 
-(tested with `ruby 2.4.1p111 (2017-03-22 revision 58053) [x86_64-linux]`)
+(tested with `ruby 2.6.3p62 (2019-04-16 revision 67580) [x86_64-linux]`)
 
 On another terminal:
 
@@ -28,15 +28,9 @@ $ gdb -q sample.elf
 (gdb) target remote localhost:23946
 ```
 
-You'll see `__asm("syscall")` that invokes gdbstub.
+Then you'll see end of `stub_test()` (-O0), or just calling `init_interrupts()` that is following `stub_test()` call (-O2).
 
-Continue with stub by skipping `syscall` and `jal stub_uninstall`:
-
-```
-(gdb) set $pc=$pc+8
-```
-
-Then break&continue, step, ...
+You can now place breakpoints, continue, step, ...
 
 ## Nintendo 64 hangs before getting stub?
 
@@ -74,7 +68,7 @@ I hope this helps you.
 
 ## Stub refuses some commands
 
-Stub refuses long (>512B) packet commands, ex. `G` (set registers) issued by `set $pc=$pc+8` ?
+Stub refuses long (>512B) packet commands, ex. `G` (set registers) issued by `set $sr=$sr&~1` ?
 
 It may be your FTDI USB driver is too slow to send bytes.
 (fifo2dram thinks "no more data" after reads first 512 bytes because so slow.)
@@ -96,14 +90,14 @@ Unsupported! Reset and redo from start...
 Just implant the following code where you want to break:
 
 ```
-extern void stub(void); stub();
+extern void stub_test(void); stub_test();
 ```
 
 And link with `gdbstub.o` and `gdbstubl.o`.
 
 Tested with O64 and O32 ABI. Other ABIs are untested...
 
-It will initialize TLB and install starting stub code to vectors (80000000, 80000080, 80000100(meaningless :-), 80000180) then invoke stub with a dummy `syscall`.
+It will initialize TLB and install starting stub code to vectors (80000000, 80000080, 80000100(meaningless :-), 80000180) then invoke stub.
 
 # TODO
 
