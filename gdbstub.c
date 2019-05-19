@@ -150,11 +150,13 @@ enum {
 extern uint8_t gdbstubctx[];
 static const uint64_t *regs = (uint64_t *)(gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE);
 
+/* TODO: if supporting binary-patch install, move these into gdbstubctx makes life easier. really do that?? */
 static uint8_t __attribute((aligned(8))) cartrxbuf[2048];
 static uint8_t __attribute((aligned(8))) carttxbuf[2048];
 static uint32_t originstcodes[4][2], origrcvrcodes[4][2];
+/* NOTE: origbpcodes must be zero-cleared. */
 static struct {
-	intptr_t addr; /* -1 = unset */
+	intptr_t invaddr; /* 0(~-1) = unset. inverted to be able to initialized as part of bss. */
 	uint32_t value;
 } origbpcodes[2];
 
@@ -297,13 +299,8 @@ static void restore_handlers(uint32_t origcodes[4][2]) {
 }
 
 void stub_install(void) {
-	uint32_t i;
 	extern void stub_installtlb(void);
 	stub_installtlb();
-
-	for(i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
-		origbpcodes[i].addr = -1;
-	}
 
 	extern void stub_switch(void);
 	backup_and_install_handlers(originstcodes, stub_switch);
@@ -670,7 +667,7 @@ static uint8_t cmd_setmemory(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 }
 
 static void bpset(uint32_t index, uintptr_t addr, uint32_t value) {
-	origbpcodes[index].addr = addr;
+	origbpcodes[index].invaddr = ~addr;
 	origbpcodes[index].value = *(uint32_t*)addr;
 	*(uint32_t*)addr = value;
 
@@ -736,15 +733,15 @@ void stub_entry(void) {
 
 	/* bprestore */
 	for(i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
-		if(origbpcodes[i].addr != -1) {
-			uint32_t *addr = (uint32_t*)origbpcodes[i].addr;
+		if(~origbpcodes[i].invaddr != -1) {
+			uint32_t *addr = (uint32_t*)~origbpcodes[i].invaddr;
 
 			*addr = origbpcodes[i].value;
 
 			dwbinval(addr, 4);
 			iinval(addr, 4);
 
-			origbpcodes[i].addr = -1;
+			origbpcodes[i].invaddr = ~-1;
 		}
 	}
 
