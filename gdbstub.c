@@ -364,7 +364,9 @@ static intptr_t tohex(uint8_t *buf, uintptr_t bufsize, intptr_t index, const voi
 	uintptr_t i = 0;
 	stub_recovered = 0;
 
-	if((((uintptr_t)buf & 3) == 0) && ((srclen & 3) == 0)) {
+	/* note: it sometimes access hardware register that requires specific bit width... don't simplify. */
+
+	if((((uintptr_t)src_ & 3) == 0) && ((srclen & 3) == 0)) {
 		/* word access */
 		const uint32_t *src = src_;
 		for(; i < srclen / 4; i++) {
@@ -377,7 +379,7 @@ static intptr_t tohex(uint8_t *buf, uintptr_t bufsize, intptr_t index, const voi
 				return -1; /* overflow! */
 			}
 		}
-	} else if((((uintptr_t)buf & 1) == 0) && ((srclen & 1) == 0)) {
+	} else if((((uintptr_t)src_ & 1) == 0) && ((srclen & 1) == 0)) {
 		/* halfword access */
 		const uint16_t *src = src_;
 		for(; i < srclen / 2; i++) {
@@ -620,6 +622,8 @@ static uint8_t cmd_setmemory(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 
 		uintptr_t width;
 		uint32_t by, phase;
+
+		/* note: it sometimes access hardware register that requires specific bit width... don't simplify. */
 
 		if(((addr & 3) == 0) && ((len & 3) == 0)) {
 			width = 4;
