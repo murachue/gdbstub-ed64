@@ -148,7 +148,7 @@ enum {
 
 /* 0~ GPR0-31(yes, include zero),[32]PS(status),LO,HI,BadVAddr,Cause,PC,[38]FPR0-31,[70]fpcs,fpir,[72]..(dsp?),[90]end */
 extern uint8_t gdbstubctx[];
-static const uint64_t *regs = (uint64_t *)(gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE);
+static uint64_t *regs = (uint64_t *)(gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE);
 
 /* TODO: if supporting binary-patch install, move these into gdbstubctx makes life easier. really do that?? */
 static uint8_t __attribute((aligned(8))) cartrxbuf[2048];
@@ -302,16 +302,16 @@ void stub_install(void) {
 	extern void stub_installtlb(void);
 	stub_installtlb();
 
-	extern void stub_switch(void);
-	backup_and_install_handlers(originstcodes, stub_switch);
+	extern void stub(void);
+	backup_and_install_handlers(originstcodes, stub);
 }
 
 void stub_uninstall(void) {
 	restore_handlers(originstcodes);
 }
 
-/* sample program entry */
-void stub(void) {
+/* sample program entry TODO: remove this */
+void stub_test(void) {
 	/* make TLB initialized; TODO detect TLB initialized and skip... possible?? */
 	extern void stub_tlbunmapall(void);
 	stub_tlbunmapall();
@@ -485,7 +485,7 @@ static uint8_t cmd_getregs(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 
 /* G<regbytes> -> OK|Exx */
 static uint8_t cmd_setregs(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
-	uint8_t *p = (void*)regs;
+	uint8_t *p = (uint8_t *)regs;
 	uintptr_t len = (endi - starti - 1) / 2;
 	uintptr_t i;
 	if(REGS_SIZE < len) {
@@ -741,12 +741,16 @@ static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 	return 0;
 }
 
-/* interrupt entry */
-void stub_entry(void) {
+void stub_main(void) {
 	extern void stub_recover(void);
 	backup_and_install_handlers(origrcvrcodes, stub_recover);
 
 	bprestore();
+
+	/* epc=ra if called with EXL=0, to make eret returns to call site. */
+	if((regs[REGS_SR / 8] & 0x0000002) == 0) {
+		regs[REGS_PC / 8] = regs[REGS_GPR / 8 + 31];
+	}
 
 	/* move enableregs out of infloop for debugging ed64 with gdb. */
 	ed_enableregs(1);

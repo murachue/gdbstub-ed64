@@ -10,9 +10,9 @@
 	.set gp=64
 	.set fp=64
 
-	.type stub_switch, function
-	.globl stub_switch
-stub_switch:
+	.type stub, function
+	.globl stub
+stub:
 
 	## context save
 
@@ -135,7 +135,7 @@ stub_switch:
 	LA_SYM($29, gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE - 0x10)
 
 	# call the stub main!
-	jal stub_entry
+	jal stub_main
 
 	## context restoration
 
