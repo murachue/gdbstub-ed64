@@ -130,6 +130,22 @@ stub:
 
 	## calling core
 
+#ifdef CONFIG_GDBSTUB_CTX_ZERO
+	# kseg0 and sseg must be coherent.
+	# dwbinval both the gdbstubctx on kseg0 and the TLB mapped gdbstubctx on sseg
+	li $1, REGS_SIZE
+	LA_P32($2, -REGS_SIZE)
+	LA_SYM($3, gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE)
+1:
+	cache 21, 0($2)
+	cache 21, 0($3)
+	# N64's D-cache line is 16 bytes
+	ADDAIU($2, $2, 16)
+	ADDAIU($3, $3, 16)
+	addiu $1, -16
+	bgtz $1, 1b
+#endif
+
 	# set sp to safe value
 	#LA_P32($29, -REGS_SIZE - 0x10($REGS_BASE))
 	LA_SYM($29, gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE - 0x10)
@@ -138,6 +154,22 @@ stub:
 	jal stub_main
 
 	## context restoration
+
+#ifdef CONFIG_GDBSTUB_CTX_ZERO
+	# kseg0 and sseg must be coherent.
+	# dwbinval both the gdbstubctx on kseg0 and the TLB mapped gdbstubctx on sseg
+	li $1, REGS_SIZE
+	LA_P32($2, -REGS_SIZE)
+	LA_SYM($3, gdbstubctx + GDBSTUBCTX_SIZE - REGS_SIZE)
+1:
+	cache 21, 0($2)
+	cache 21, 0($3)
+	# N64's D-cache line is 16 bytes
+	ADDAIU($2, $2, 16)
+	ADDAIU($3, $3, 16)
+	addiu $1, -16
+	bgtz $1, 1b
+#endif
 
 	# using $31($ra) as a base looks strange at a glance, but restore code become looks simpler.
 	LA_SYM($31, gdbstubctx + GDBSTUBCTX_SIZE)
