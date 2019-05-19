@@ -257,12 +257,32 @@ static uint32_t fifo2dram(void* buf, uintptr_t maxlen) {
 	return len;
 }
 
-static void install_handler(void *pfn) {
+static void backup_and_install_handlers(uint32_t origcodes[4][2], void *pfn) {
 	uint32_t i, j;
 	uint32_t stubintcode[2];
 	stubintcode[0] = 0x08000000 | (((uint32_t)(uintptr_t)pfn >> 2) & 0x03FFffff); /* j *pfn */
 	stubintcode[1] = 0; /* branch-delay-slot: nop */
 
+	/* verify not already installed (at least one handler), or abort if it is. */
+	for(i = 0; i < 4; i++) {
+		for(j = 0; j < 2; j++) {
+			if(*(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4) != stubintcode[j]) {
+				break;
+			}
+		}
+		if(!(j < 2)) {
+			return;
+		}
+	}
+
+	/* backup */
+	for(i = 0; i < 4; i++) {
+		for(j = 0; j < 2; j++) {
+			origcodes[i][j] = *(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4);
+		}
+	}
+
+	/* install */
 	for(i = 0; i < 4; i++) {
 		for(j = 0; j < 2; j++) {
 			*(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4) = stubintcode[j];
@@ -271,18 +291,6 @@ static void install_handler(void *pfn) {
 
 	dwbinval((void*)P32(0x80000000), 0x200);
 	iinval((void*)P32(0x80000000), 0x200);
-}
-
-static void backup_and_install_handlers(uint32_t origcodes[4][2], void *pfn) {
-	uint32_t i, j;
-
-	for(i = 0; i < 4; i++) {
-		for(j = 0; j < 2; j++) {
-			origcodes[i][j] = *(uint32_t*)P32(0x80000000 + i * 0x80 + j * 4);
-		}
-	}
-
-	install_handler(pfn);
 }
 
 static void restore_handlers(uint32_t origcodes[4][2]) {
