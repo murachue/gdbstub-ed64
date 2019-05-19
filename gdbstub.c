@@ -675,6 +675,23 @@ static void bpset(uint32_t index, uintptr_t addr, uint32_t value) {
 	iinval((void*)addr, 4);
 }
 
+static void bprestore() {
+	uint32_t i;
+
+	for(i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
+		if(~origbpcodes[i].invaddr != -1) {
+			uint32_t *addr = (uint32_t*)~origbpcodes[i].invaddr;
+
+			*addr = origbpcodes[i].value;
+
+			dwbinval(addr, 4);
+			iinval(addr, 4);
+
+			origbpcodes[i].invaddr = ~-1;
+		}
+	}
+}
+
 /* s -> (stop_reply) */
 /* ref: Linux 2.6.25:arch/mips/kernel/gdb-stub.c */
 static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
@@ -726,24 +743,10 @@ static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 
 /* interrupt entry */
 void stub_entry(void) {
-	uint32_t i;
-
 	extern void stub_recover(void);
 	backup_and_install_handlers(origrcvrcodes, stub_recover);
 
-	/* bprestore */
-	for(i = 0; i < sizeof(origbpcodes)/sizeof(*origbpcodes); i++) {
-		if(~origbpcodes[i].invaddr != -1) {
-			uint32_t *addr = (uint32_t*)~origbpcodes[i].invaddr;
-
-			*addr = origbpcodes[i].value;
-
-			dwbinval(addr, 4);
-			iinval(addr, 4);
-
-			origbpcodes[i].invaddr = ~-1;
-		}
-	}
+	bprestore();
 
 	/* move enableregs out of infloop for debugging ed64 with gdb. */
 	ed_enableregs(1);
