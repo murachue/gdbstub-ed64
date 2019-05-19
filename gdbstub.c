@@ -298,12 +298,31 @@ static void restore_handlers(uint32_t origcodes[4][2]) {
 	iinval((void*)P32(0x80000000), 0x200);
 }
 
+static int is_in_stub(void) {
+	uint8_t *sp;
+	__asm("move %0, $sp" : "=r"(sp));
+	return gdbstubctx <= sp && sp < (gdbstubctx + GDBSTUBCTX_SIZE);
+}
+
 void stub_install(void) {
+#ifdef CONFIG_GDBSTUB_CTX_ZERO
 	extern void stub_installtlb(void);
 	stub_installtlb();
+#endif
 
 	extern void stub(void);
-	backup_and_install_handlers(originstcodes, stub);
+
+	if(is_in_stub()) {
+		/* prepare to call from stub... */
+		restore_handlers(origrcvrcodes);
+
+		backup_and_install_handlers(originstcodes, stub);
+
+		extern void stub_recover(void);
+		backup_and_install_handlers(origrcvrcodes, stub_recover);
+	} else {
+		backup_and_install_handlers(originstcodes, stub);
+	}
 }
 
 void stub_uninstall(void) {
@@ -312,7 +331,7 @@ void stub_uninstall(void) {
 
 /* sample program entry TODO: remove this */
 void stub_test(void) {
-	/* make TLB initialized; TODO detect TLB initialized and skip... possible?? */
+	/* make TLB initialized; TODO this can be removed if stub_installtlb does tlbp */
 	extern void stub_tlbunmapall(void);
 	stub_tlbunmapall();
 
