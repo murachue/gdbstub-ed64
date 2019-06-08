@@ -23,11 +23,11 @@
 		} \
 	} while(0)
 
-void dwbinvalall() {
+static void dwbinvalall() {
 	do_cache(0, 1, 16, (intptr_t)(int32_t)0x80000000, 8 * 1024); /* 0=IndexWBInvd */
 }
 
-void dwbinval(const void *ptr, uintptr_t len) {
+static void dwbinval(const void *ptr, uintptr_t len) {
 	/* if len is over d-cache size, assume whole is cached, flush all d-cache. */
 	if(8192 <= len) {
 		dwbinvalall();
@@ -37,7 +37,7 @@ void dwbinval(const void *ptr, uintptr_t len) {
 	do_cache(5, 1, 16, ptr, len); /* 5=HitWBInvd */
 }
 
-void dinval(const void *ptr, uintptr_t len) {
+static void dinval(const void *ptr, uintptr_t len) {
 	/* if len is over d-cache size, assume whole is cached, flush all d-cache. */
 	if(8192 <= len) {
 		dwbinvalall(); /* note: there is no DIndexInvd (think it... too dangerous!!), do WBInvd instead (that is safe and intended). */
@@ -47,11 +47,11 @@ void dinval(const void *ptr, uintptr_t len) {
 	do_cache(4, 1, 16, ptr, len); /* 4=HitInvd */
 }
 
-void iinvalall() {
+static void iinvalall() {
 	do_cache(0, 0, 32, (intptr_t)(int32_t)0x80000000, 16 * 1024); /* 0=Index(WB)Invd */
 }
 
-void iinval(const void *ptr, uintptr_t len) {
+static void iinval(const void *ptr, uintptr_t len) {
 	/* if len is over i-cache size, assume whole is cached, flush all i-cache. */
 	if(16384 <= len) {
 		iinvalall();
