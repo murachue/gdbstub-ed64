@@ -17,6 +17,7 @@ BASENAME = sample
 ROM = $(BASENAME).z64
 BIN = $(BASENAME).bin
 ELF = $(BASENAME).elf
+MAP = $(BASENAME).map
 OBJS = sample.o $(STUBOBJS)
 LIBS = -ldragon -lc -ldragonsys
 
@@ -25,7 +26,7 @@ LIBS = -ldragon -lc -ldragonsys
 all: $(ROM)
 
 clean:
-	-rm $(ROM) $(BIN) $(ELF) $(OBJS)
+	-rm $(ROM) $(BIN) $(ELF) $(MAP) $(OBJS)
 
 $(ROM): $(BIN)
 	rm -f $@
@@ -36,7 +37,7 @@ $(BIN): $(ELF)
 	$(OBJCOPY) $< $@ -O binary
 
 $(ELF): $(OBJS)
-	$(CC) -Tn64ld.x -Wl,-Map,$@.map -o $@ $^ $(LIBS)
+	$(CC) -Tn64ld.x -Wl,-Map,$(MAP) -o $@ $^ $(LIBS)
 
 gdbstubl.o: gdbstubl.S gdbstub.h
 gdbstub.o: gdbstub.c gdbstub.h
