@@ -8,7 +8,8 @@ int counter;
 
 int main(void) {
 	/* start GDBstub :) */
-	extern void stub_test(void); stub_test();
+	extern void stub_install(void); stub_install();
+	extern void stub(void); stub(); /* or just *(int*)0=0; */
 
 	/* enable interrupts (on the CPU) */
 	init_interrupts();

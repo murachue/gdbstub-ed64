@@ -314,6 +314,9 @@ static int is_in_stub(void) {
 
 void stub_install(void) {
 #ifdef CONFIG_GDBSTUB_CTX_ZERO
+	/* make TLB initialized TODO: include tlbunmapall into installtlb */
+	extern void stub_tlbunmapall(void);
+	stub_tlbunmapall();
 	extern void stub_installtlb(void);
 	stub_installtlb();
 #endif
@@ -335,17 +338,6 @@ void stub_install(void) {
 
 void stub_uninstall(void) {
 	restore_handlers(originstcodes);
-}
-
-/* sample program entry TODO: remove this */
-void stub_test(void) {
-	/* make TLB initialized; TODO this can be removed if stub_installtlb does tlbp */
-	extern void stub_tlbunmapall(void);
-	stub_tlbunmapall();
-
-	stub_install();
-	extern void stub(void); stub();
-	/*stub_uninstall();*/
 }
 
 static int32_t hex2int(uint8_t c) {

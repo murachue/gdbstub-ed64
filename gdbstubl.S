@@ -286,11 +286,11 @@ stub_recover:
 	.globl stub_tlbunmapall
 stub_tlbunmapall:
 	# initialize TLB; as osUnmapTLBAll (not Linux like!)
-	li $t0, 31 # TODO not 47?
+	li $t0, 31 # R4300i have only 32 TLB entries, not 48.
 	LA_P32($t1, 0x80000000)
-	MATC0($t1, $10) # EntryHi
-	MATC0($zero, $2) # EntryLo0
-	MATC0($zero, $3) # EntryLo1
+	MATC0($t1, $10) # EntryHi; 80000000=never hit VA
+	MATC0($zero, $2) # EntryLo0; Valid=0
+	MATC0($zero, $3) # EntryLo1; Valid=0
 	MATC0($zero, $5) # PageMask; 4KiB
 
 1:
@@ -307,7 +307,6 @@ stub_tlbunmapall:
 	.type stub_installtlb, function
 	.globl stub_installtlb
 stub_installtlb:
-	# TODO: tlbp
 	LA_P32($t1, 0xFFFFE000)
 	MATC0($t1, $10) # EntryHi
 	MATC0($zero, $2) # EntryLo0
