@@ -145,6 +145,14 @@ enum {
 	STUBERR_STJRSEGV, /* STep JR/jalr target fetch SEGV (can it be happened??) */
 	STUBERR_STFNSEGV, /* STep False-branch Next instruction breakpoint SEGV */
 	STUBERR_STTNSEGV, /* STep True-branch Next instruction breakpoint SEGV */
+	STUBERR_HWCMDINV, /* Hardware Watchpoint CoMmanD INValid (programming error) */
+	STUBERR_HWTYPESHORT, /* Hardware Watchpoint TYPE too SHORT */
+	STUBERR_HWTYPEINV, /* Hardware Watchpoint TYPE INValid (invalid nibble, or invalid type itself) */
+	STUBERR_HWADDRSHORT, /* Hardware Watchpoint ADDRess too SHORT */
+	STUBERR_HWADDRINV, /* Hardware Watchpoint ADDRess INValid nibble */
+	STUBERR_HWKINDSHORT, /* Hardware Watchpoint KIND too SHORT */
+	STUBERR_HWKINDINV, /* Hardware Watchpoint KIND INValid (invalid nibble, or invalid kind itself) */
+	STUBERR_HWNOTIMPL, /* Hardware Watchpoint NOT IMPLemented address range. TODO: implement this? */
 };
 
 /* 0~ GPR0-31(yes, include zero),[32]PS(status),LO,HI,BadVAddr,Cause,PC,[38]FPR0-31,[70]fpcs,fpir,[72]..(dsp?),[90]end */
@@ -765,6 +773,108 @@ static uint8_t cmd_step(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 	return 0;
 }
 
+/* [zZ][0-4]<ADDR>,<KIND> -> OK|Exx */
+static uint8_t cmd_watch(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
+	uintptr_t i = starti + 1;
+	int32_t set = 0, type = 0, kind = 0;
+	uintptr_t addr = 0;
+
+	if(buf[starti] == 'Z') {
+		set = 1;
+	} else if(buf[starti] == 'z') {
+		set = 0;
+	} else {
+		return STUBERR_HWCMDINV; /* programming error */
+	}
+
+	for(; buf[i] != ','; i++) {
+		if(endi <= i) {
+			return STUBERR_HWTYPESHORT;
+		}
+		{
+			int32_t nib = hex2int(buf[i]);
+			if(nib < 0) {
+				return STUBERR_HWTYPEINV;
+			}
+			type = (type << 4) | nib;
+		}
+	}
+	i++; /* skip ',' */
+	for(; buf[i] != ','; i++) {
+		if(endi <= i) {
+			return STUBERR_HWADDRSHORT;
+		}
+		{
+			int32_t nib = hex2int(buf[i]);
+			if(nib < 0) {
+				return STUBERR_HWADDRINV;
+			}
+			addr = (addr << 4) | nib;
+		}
+	}
+	i++; /* skip ',' */
+	for(; buf[i] != '#'; i++) {
+		if(endi <= i) {
+			return STUBERR_HWKINDSHORT;
+		}
+		{
+			int32_t nib = hex2int(buf[i]);
+			if(nib < 0) {
+				return STUBERR_HWKINDINV;
+			}
+			kind = (kind << 4) | nib;
+		}
+	}
+
+	if(type == 0) {
+		/* software breakpoint is GDB's task... reply empty = "not supported" */
+		carttxbuf[0] = '+';
+		carttxbuf[1] = '$';
+		carttxbuf[2] = '#';
+		if(sendpkt(carttxbuf, sizeof(carttxbuf))) die(0x07C0);
+		return 0;
+	}
+
+	if(type < 2 || 4 < type) {
+		return STUBERR_HWTYPEINV;
+	}
+	if(kind != 4) {
+		return STUBERR_HWKINDINV;
+	}
+
+	/* only kseg0/kseg1 are supported yet... */
+	if(addr < P32(0x80000000) || P32(0xC0000000) <= addr) {
+		return STUBERR_HWNOTIMPL;
+	}
+
+	/* VA->PA with 8bytes align (WatchLo spec) */
+	addr = addr & 0x1FFFfff8;
+
+	{
+		uint32_t expectwlo = set == 0 ? 0 : (addr | (type - 1)); /* hack: ((2..4=w,r,a) - 1) is corresponds to WatchLo[0:1]=R|W */
+		uint32_t wlo;
+		__asm("mfc0 %0, $18" : "=r"(wlo));
+
+		/* TODO: when set==0, check WatchLo is exactly to-be-unset and return error if not? */
+		if(set && (wlo & 3) && (wlo != expectwlo)) {
+			/* already set on other address... return error. (empty="not supported" cause "Protocol error: Z2 (write-watchpoint) conflicting enabled responses" on GDB...) */
+			return STUBERR_HWNOTIMPL;
+		}
+
+		__asm("mtc0 %0, $18" : : "r"(expectwlo));
+		__asm("mtc0 $0, $19"); /* PA[35:32] always zero at this implementation */
+	}
+
+	carttxbuf[0] = '+';
+	carttxbuf[1] = '$';
+	carttxbuf[2] = 'O';
+	carttxbuf[3] = 'K';
+	carttxbuf[4] = '#';
+	if(sendpkt(carttxbuf, sizeof(carttxbuf))) die(0x07C0);
+
+	return 0;
+}
+
 void stub_main(void) {
 	extern void stub_recover(void);
 	backup_and_install_handlers(origrcvrcodes, stub_recover);
@@ -903,6 +1013,10 @@ void stub_main(void) {
 						goto bye;
 					}
 				}
+				break;
+			case 'Z': /* insert watch */ /*FALLTHROUGH*/
+			case 'z': /* remove watch */
+				error = cmd_watch(cartrxbuf, starti, endi);
 				break;
 			default:
 				/* unknown command... */
