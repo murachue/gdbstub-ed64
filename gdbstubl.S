@@ -66,6 +66,23 @@ stub:
 	sd  $1, (-REGS_SIZE + REGS_GPR + REGS_BASE*8)($REGS_BASE)
 #endif
 
+#ifdef CONFIG_GDBSTUB_INTERRUPT_HANDLER
+	## passing interrupt
+	mfc0 $1, $12 # status
+	andi $1, 0x0002
+	beqz $1, 1f
+	# EXL is high: exception, not directly called
+	mfc0 $1, $13 # cause
+	andi $1, 0x00FF
+	bnez $1, 1f
+	# cause is 0=interrupt. let it pass.
+	# restore $1
+	ld  $1, (-REGS_SIZE + REGS_GPR +  1*8)($REGS_BASE)
+	# then jump into handler
+	j CONFIG_GDBSTUB_INTERRUPT_HANDLER
+1:
+#endif
+
 	# CP0s
 	mfc0 $12, $12 # status
 	sd $12, (-REGS_SIZE + REGS_SR)($REGS_BASE) # 32bit as 64bit

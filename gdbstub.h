@@ -5,6 +5,9 @@
 /* #define CONFIG_GDBSTUB_CTX_GP */ /* requires 8 bytes in sbss */
 /* #define CONFIG_GDBSTUB_CTX_K0 */ /* requires clobbering $k0 */
 
+/* you can optionally set following. */
+/* #define CONFIG_GDBSTUB_INTERRUPT_HANDLER inthandler */ /* jump to this handler if exception is interrupt. (sample value is for libdragon) */
+
 #if _MIPS_SZPTR == 32
 #define P32(addr) (addr)
 #define LA_P32(reg,addr) la reg, addr
