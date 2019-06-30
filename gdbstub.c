@@ -124,26 +124,27 @@ enum ED64_DMACFG {
 
 /* gdbstub */
 
+/* TODO: unify tooshort/invalid_nibble */
 enum {
 	STUBERR_UNKNOWN = 1,
-	STUBERR_GRTOOSHORT,
-	STUBERR_SRINV1,
-	STUBERR_SRINV2,
-	STUBERR_GMADDRSHORT,
-	STUBERR_GMADDRINV,
-	STUBERR_GMLENINV,
-	STUBERR_GMSEGV,
-	STUBERR_SMADDRSHORT,
-	STUBERR_SMADDRINV,
-	STUBERR_SMLENSHORT,
-	STUBERR_SMLENINV,
-	STUBERR_SMBYTESINV,
-	STUBERR_SMSEGV,
-	STUBERR_CADDRNOTIMPL,
-	STUBERR_STPCSEGV,
-	STUBERR_STJRSEGV,
-	STUBERR_STFNSEGV,
-	STUBERR_STTNSEGV,
+	STUBERR_GRTOOSHORT, /* 'G'(set register) too short */
+	STUBERR_SRINV1, /* SetRegister INValid 1(high-nibble) */
+	STUBERR_SRINV2, /* SetRegister INValid 2(low-nibble) */
+	STUBERR_GMADDRSHORT, /* GetMemory ADDRess too SHORT */
+	STUBERR_GMADDRINV, /* GetMemory ADDRess INValid nibble */
+	STUBERR_GMLENINV, /* GetMemory LENgth INValid nibble */
+	STUBERR_GMSEGV, /* GetMemory SEGV (access error) */
+	STUBERR_SMADDRSHORT, /* SetMemory ADDRess too SHORT */
+	STUBERR_SMADDRINV, /* SetMemory ADDRess INValid nibble */
+	STUBERR_SMLENSHORT, /* SetMemory LENgth too SHORT */
+	STUBERR_SMLENINV, /* SetMemory LENgth INValid nibble */
+	STUBERR_SMBYTESINV, /* SetMemory BYTES INValid nibble */
+	STUBERR_SMSEGV, /* SetMemory SEGV (access error) */
+	STUBERR_CADDRNOTIMPL, /* Continue with ADDRess is NOT IMPLemented */
+	STUBERR_STPCSEGV, /* STep fetch instruction from PC SEGV */
+	STUBERR_STJRSEGV, /* STep JR/jalr target fetch SEGV (can it be happened??) */
+	STUBERR_STFNSEGV, /* STep False-branch Next instruction breakpoint SEGV */
+	STUBERR_STTNSEGV, /* STep True-branch Next instruction breakpoint SEGV */
 };
 
 /* 0~ GPR0-31(yes, include zero),[32]PS(status),LO,HI,BadVAddr,Cause,PC,[38]FPR0-31,[70]fpcs,fpir,[72]..(dsp?),[90]end */
