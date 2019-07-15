@@ -152,7 +152,8 @@ enum {
 	STUBERR_HWADDRINV, /* Hardware Watchpoint ADDRess INValid nibble */
 	STUBERR_HWKINDSHORT, /* Hardware Watchpoint KIND too SHORT */
 	STUBERR_HWKINDINV, /* Hardware Watchpoint KIND INValid (invalid nibble, or invalid kind itself) */
-	STUBERR_HWNOTIMPL, /* Hardware Watchpoint NOT IMPLemented address range. TODO: implement this? */
+	STUBERR_HWNIADDR, /* Hardware Watchpoint Not Implemented Address range. TODO: implement this? */
+	STUBERR_HWNIMULTI, /* Hardware Watchpoint Not Implemented MULTIple watches */
 };
 
 /* 0~ GPR0-31(yes, include zero),[32]PS(status),LO,HI,BadVAddr,Cause,PC,[38]FPR0-31,[70]fpcs,fpir,[72]..(dsp?),[90]end */
@@ -844,7 +845,7 @@ static uint8_t cmd_watch(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 
 	/* only kseg0/kseg1 are supported yet... */
 	if(addr < P32(0x80000000) || P32(0xC0000000) <= addr) {
-		return STUBERR_HWNOTIMPL;
+		return STUBERR_HWNIADDR;
 	}
 
 	/* VA->PA with 8bytes align (WatchLo spec) */
@@ -858,7 +859,7 @@ static uint8_t cmd_watch(uint8_t *buf, uintptr_t starti, uintptr_t endi) {
 		/* TODO: when set==0, check WatchLo is exactly to-be-unset and return error if not? */
 		if(set && (wlo & 3) && (wlo != expectwlo)) {
 			/* already set on other address... return error. (empty="not supported" cause "Protocol error: Z2 (write-watchpoint) conflicting enabled responses" on GDB...) */
-			return STUBERR_HWNOTIMPL;
+			return STUBERR_HWNIMULTI;
 		}
 
 		__asm("mtc0 %0, $18" : : "r"(expectwlo));
