@@ -50,13 +50,14 @@ File.open(ARGV[0], 'r+b') { |com|
 	if ARGV[1]
 		ARGV[1] =~ /\A(?:(.+):)?(.+)\z/
 		addr = $1 || '127.0.0.1'
-		port = $2
+		port = $2.to_i.abs.to_s
+		verbose = $2.to_i < 0
 		TCPServer.open(addr, port) { |ss|
 			loop {
 				puts "listening #{addr}:#{port}"
 				s = ss.accept
 				puts "accept from #{s.peeraddr.values_at(3,1).inspect}"
-				interact com, {r: s, w: s}, true
+				interact com, {r: s, w: s}, verbose
 				puts "disconnected"
 			}
 		}
