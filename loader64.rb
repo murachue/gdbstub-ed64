@@ -35,7 +35,7 @@ $stdout.sync = true
 File.open(ARGV[0], 'r+b') { |com|
 	com.raw!
 	com.sync = true
-	File.open(ARGV[1], 'r+b') { |f|
+	File.open(ARGV[1], 'rb') { |f|
 		$stdout.print 'Testing...'
 		sendrecv_command com, 'CMDT', 'test'
 		$stdout.print 'OK, '
