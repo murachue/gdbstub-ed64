@@ -96,14 +96,14 @@ Or, instead of Ctrl-C on host, you can implant the stub call at some debug-butto
 You must keep following "Restrictions" section, then just implant the following code where you want to break:
 
 ```
-extern void stub_test(void); stub_test();
+extern void stub_install(void); stub_install(); /* if you want to invoke stub when MIPS exceptions happens */
+
+extern void stub(void); stub(); /* if you want to drop into stub immediately */
 ```
 
 And link with `gdbstub.o` and `gdbstubl.o`.
 
 Tested with O64 and O32 ABI. Other ABIs are untested...
-
-It will initialize TLB and install starting stub code to vectors (80000000, 80000080, 80000100(meaningless :-), 80000180) then invoke stub.
 
 ## Restrictions
 
@@ -117,10 +117,29 @@ It will initialize TLB and install starting stub code to vectors (80000000, 8000
 
 ## Skip interrupts
 
-To skip interrupts automatically, you must obey following two things:
+There are 2 options to skip interrupts automatically:
 
-- inject code that do "jump to `stub` if not interrupt" into your exception handler
-- do *NOT* use `stub_test` or `stub_install` (that installs exception handler that invoking `stub` even when interrupt)
+- Let this gdbstub calls interrupt handler automatically (easy)
+- Write "enter gdbstub only if not interrupt" code yourself (runs faster)
+
+### gdbstub-leads style (easy)
+
+First, ensure interrupt handler is isolated from exception handler.
+
+Then, un-comment and rewrite following line in `gdbstub.h`:
+
+```
+#define CONFIG_GDBSTUB_INTERRUPT_HANDLER inthandler /* jump to this handler if exception is interrupt. (sample value is for libdragon) */
+```
+
+In above example, gdbstub will call `inthandler` when interrupt happens.
+
+### Your-code-leads style (faster)
+
+You must obey following two things:
+
+- Inject code that do "jump to `stub` if not interrupt" into your exception handler
+- Do *NOT* use `stub_install` (that will overwrites your exception handler...)
 
 Inject code will be like following:
 
@@ -202,9 +221,8 @@ Above code crobbers `$k0` and `$k1`, so you can't see real `$k0` and `$k1` value
 	* currently it assuming that stub is a ONLY user of TLB... or TLB-shutdown will happen in worst case
 	* should tlbp before tlbwr, and use tlbwi if found
 * support stepping eret (gdbstub.c)
-* support skipping interrupt exception naturally (or filtering some exception)
-	* how to run the (first 2 instructions of) original handler?
 * stepping into exception handler naturally
+	* how to run the (first 2 instructions of) original handler?
 	* currently you need to set pc to the handler...
 	* EPC can't be restored... how to??
 
